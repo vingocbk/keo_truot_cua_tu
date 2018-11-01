@@ -179,11 +179,20 @@ INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5)
   * @param  None
   * @retval None
   */
+ int t;
 INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
 {
   /* In order to detect unexpected events during development,
      it is recommended to set a breakpoint on the following instruction.
   */
+    if(GPIO_ReadInputPin(GPIOD, GPIO_PIN_2) == 0){
+        t++;
+        if(t%2 == 0){
+            TIM2_Cmd(ENABLE);
+        }else{
+            TIM2_Cmd(DISABLE);
+        }
+    }
 }
 
 /**

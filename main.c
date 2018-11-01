@@ -9,12 +9,6 @@ bool fristRun = TRUE;   //kiem tra lan chay dau tinh khoang cach chieu dai tu
 uint8_t countFrirstRun = 0;  //dem so lan va cham
 void main( void )
 {
-  GPIO_Init(GPIOC, GPIO_PIN_5, GPIO_MODE_OUT_PP_HIGH_FAST);     //PWM - phat xung toc do
-  GPIO_Init(GPIOC, GPIO_PIN_4, GPIO_MODE_OUT_PP_HIGH_FAST);     //FR - chieu quay
-  GPIO_Init(GPIOC, GPIO_PIN_3, GPIO_MODE_OUT_PP_HIGH_FAST);     //led test
-  GPIO_Init(GPIOB, GPIO_PIN_4, GPIO_MODE_IN_PU_IT);             //hall sensor1
-  GPIO_Init(GPIOB, GPIO_PIN_5, GPIO_MODE_IN_PU_IT);             //hall sensor2
-  GPIO_Init(GPIOD, GPIO_PIN_3, GPIO_MODE_IN_PU_IT);             //FG - toc do phan hoi ve
   //setup clock 16Mhz
   CLK_DeInit();
   CLK_HSIPrescalerConfig(CLK_PRESCALER_HSIDIV1);      //f_Master = HSI/1 = 16MHz
@@ -22,12 +16,20 @@ void main( void )
   while(CLK_GetFlagStatus(CLK_FLAG_HSIRDY)!=SET);
   clk = CLK_GetClockFreq();
 
+  
+  GPIO_Init(GPIOC, GPIO_PIN_5, GPIO_MODE_OUT_PP_HIGH_FAST);     //PWM - phat xung toc do
+  GPIO_Init(GPIOC, GPIO_PIN_4, GPIO_MODE_OUT_PP_HIGH_FAST);     //FR - chieu quay
+  GPIO_Init(GPIOC, GPIO_PIN_3, GPIO_MODE_OUT_PP_HIGH_FAST);     //led test
+  GPIO_Init(GPIOB, GPIO_PIN_4, GPIO_MODE_IN_PU_IT);             //hall sensor1
+  GPIO_Init(GPIOB, GPIO_PIN_5, GPIO_MODE_IN_PU_IT);             //hall sensor2
+  GPIO_Init(GPIOD, GPIO_PIN_3, GPIO_MODE_IN_PU_IT);             //FG - toc do phan hoi ve
+  GPIO_Init(GPIOD, GPIO_PIN_2, GPIO_MODE_IN_PU_IT);             //config RF
+
   disableInterrupts();
   //setup extenal interrupt
   GPIO_Init(GPIOD, GPIO_PIN_4, GPIO_MODE_IN_PU_IT);
   GPIO_Init(GPIOD, GPIO_PIN_5, GPIO_MODE_IN_PU_IT);
   EXTI_SetExtIntSensitivity(EXTI_PORT_GPIOD, EXTI_SENSITIVITY_FALL_ONLY);
-
   //note PD7 is LTI, use INTERRUPT_HANDLER(LTI_IRQHandler, 0)
 
   //setup timer2
