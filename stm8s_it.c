@@ -32,7 +32,7 @@
 
 /* Private typedef -----------------------------------------------------------*/
 float sacle = 0.8;
-int MinSpeed = 5;
+int MinSpeed = 10;
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
@@ -367,7 +367,7 @@ INTERRUPT_HANDLER(TIM1_CAP_COM_IRQHandler, 12)
           }
       }
 
-      if(sau_1_s == 5 && countTime == 7000){   //sau 1s bat dau tinh, chu ky 100ms
+      if(sau_1_s == 5 && countTime == 6000){   //sau 1s bat dau tinh, chu ky 100ms
           GPIO_WriteReverse(GPIOC, GPIO_PIN_3);
           pul = countPulFG;
           speed = (pul - prepul)/(0.1*6);
@@ -400,7 +400,7 @@ INTERRUPT_HANDLER(TIM1_CAP_COM_IRQHandler, 12)
               }
           }
       }
-      if(countTime == 7000){      //1000
+      if(countTime == 6000){      //10000
           countTime = 0;
           if(sau_1_s < 5){
               sau_1_s++;              
@@ -416,6 +416,7 @@ INTERRUPT_HANDLER(TIM1_CAP_COM_IRQHandler, 12)
               countPulFG = 0;
           }
           TIM2_Cmd(DISABLE);  
+          delay(5000);
           daytay = TRUE;  
           // if(fristRun == TRUE && countFrirstRun == 2){    //chua hieu tai sao lai bij xuong day
           //     fristRun = FALSE;
