@@ -31,10 +31,20 @@
 
 
 /* Private typedef -----------------------------------------------------------*/
+float sacle = 0.8;
+int MinSpeed = 5;
 /* Private define ------------------------------------------------------------*/
 /* Private macro -------------------------------------------------------------*/
 /* Private variables ---------------------------------------------------------*/
 extern uint16_t Conversion_Value;
+extern int countPulFG;
+extern uint32_t countPulDistant;
+extern uint8_t countSetPwm;
+extern uint32_t countTime;
+extern uint8_t sau_1_s;
+extern int pul, prepul;
+extern float speed;
+extern bool daytay;       //cho phep co day tay hay khong
 extern bool statusStop;     //true la he thong dang dung im, false la he thong dang chuyen dong
 extern bool countHall1;
 extern bool countHall2;
@@ -45,7 +55,11 @@ extern uint8_t countFrirstRun;  //dem so lan va cham
 /* Private function prototypes -----------------------------------------------*/
 /* Private functions ---------------------------------------------------------*/
 /* Public functions ----------------------------------------------------------*/
-
+void delay(uint8_t time){
+    while (time == 0){
+        time--;
+    }
+}
 /** @addtogroup IT_Functions
   * @{
   */
@@ -132,34 +146,38 @@ INTERRUPT_HANDLER(EXTI_PORTB_IRQHandler, 4)
   /* In order to detect unexpected events during development,
      it is recommended to set a breakpoint on the following instruction.
   */
-  if(statusStop == TRUE){
-    if(GPIO_ReadInputPin(GPIOB, GPIO_PIN_4) == 0){
+  if(statusStop == TRUE && daytay == TRUE){
+    if(GPIO_ReadInputPin(GPIOB, GPIO_PIN_4) == 0){    //O1
       if(countHall2 == TRUE){
           //cho dong co chay thuan
+          daytay = FALSE;
           statusStop = FALSE;
-          Forward = TRUE;
-          // digitalWrite(dir, LOW);
-          // Setspeed.start();
-          // TIMSK1 = (1 << TOIE1);                  // Overflow interrupt disable
+          Forward = FALSE;
+          GPIO_WriteHigh(GPIOC, GPIO_PIN_4);
+          TIM2_Cmd(ENABLE);
+          countHall1 = FALSE;
+          countHall2 = FALSE; 
+          return;
       }else{
           countHall1 = TRUE;
       }
     }
-    if(GPIO_ReadInputPin(GPIOB, GPIO_PIN_5) == 0){
+    if(GPIO_ReadInputPin(GPIOB, GPIO_PIN_5) == 0){      //O2
       if(countHall1 == TRUE){
           //cho dong co chay nghich
+          daytay = FALSE;
           statusStop = FALSE;
-          Forward = FALSE;
-          // digitalWrite(dir, LOW);
-          // Setspeed.start();
-          // TIMSK1 = (1 << TOIE1);                  // Overflow interrupt disable
+          Forward = TRUE;
+          GPIO_WriteLow(GPIOC, GPIO_PIN_4);
+          TIM2_Cmd(ENABLE);
+          countHall1 = FALSE;
+          countHall2 = FALSE;
+          return;
       }else{
           countHall2 = TRUE;
       }
-    }
-      
+    } 
   }
-  
 }
 
 /**
@@ -179,20 +197,27 @@ INTERRUPT_HANDLER(EXTI_PORTC_IRQHandler, 5)
   * @param  None
   * @retval None
   */
- int t;
+ 
 INTERRUPT_HANDLER(EXTI_PORTD_IRQHandler, 6)
 {
   /* In order to detect unexpected events during development,
      it is recommended to set a breakpoint on the following instruction.
   */
-    if(GPIO_ReadInputPin(GPIOD, GPIO_PIN_2) == 0){
-        t++;
-        if(t%2 == 0){
-            TIM2_Cmd(ENABLE);
+    if(GPIO_ReadInputPin(GPIOD, GPIO_PIN_3) == 0){
+        if(Forward == TRUE){
+            countPulFG++;
         }else{
-            TIM2_Cmd(DISABLE);
+            countPulFG--;
         }
     }
+    // if(GPIO_ReadInputPin(GPIOD, GPIO_PIN_2) == 0){
+    //     t++;
+    //     if(t%2 == 0){
+    //         TIM2_Cmd(ENABLE);
+    //     }else{
+    //         TIM2_Cmd(DISABLE);
+    //     }
+    // }
 }
 
 /**
@@ -319,9 +344,85 @@ INTERRUPT_HANDLER(TIM1_CAP_COM_IRQHandler, 12)
      it is recommended to set a breakpoint on the following instruction.
   */
    if(TIM2_GetITStatus(TIM2_IT_UPDATE)){
-    GPIO_WriteReverse(GPIOC, GPIO_PIN_3);
-    TIM2_ClearITPendingBit(TIM2_IT_UPDATE);
-  }
+      //GPIO_WriteReverse(GPIOC, GPIO_PIN_3);
+      countTime++;
+      
+      if(fristRun == FALSE  && countPulFG >= (1-sacle)*countPulDistant && countPulFG <= sacle*countPulDistant){
+          modeFast = TRUE;
+      }else{
+          modeFast = FALSE;
+      }
+
+      if(modeFast == TRUE){  //chay nhanh
+          if(countTime%4 == 0){
+              GPIO_WriteHigh(GPIOC, GPIO_PIN_5);
+          }else{
+              GPIO_WriteLow(GPIOC, GPIO_PIN_5);
+          }
+      }else{
+          if(countTime%4 == 0){
+              GPIO_WriteLow(GPIOC, GPIO_PIN_5);
+          }else{
+              GPIO_WriteHigh(GPIOC, GPIO_PIN_5);
+          }
+      }
+
+      if(sau_1_s == 5 && countTime == 7000){   //sau 1s bat dau tinh, chu ky 100ms
+          GPIO_WriteReverse(GPIOC, GPIO_PIN_3);
+          pul = countPulFG;
+          speed = (pul - prepul)/(0.1*6);
+          prepul = pul;
+          if((Forward == TRUE && speed <= MinSpeed) || (Forward == FALSE && speed >= -MinSpeed)){    //coi nhu co vat can, hoac het hanh trinh
+              if(fristRun == TRUE && countFrirstRun < 3){
+                  countFrirstRun ++;
+              }
+              if(fristRun == TRUE && countFrirstRun == 1){      //lan va cham dau tien, bat dau tinh chieu dai tu
+                  countPulFG = 0;
+                  prepul = 0;
+              }
+              else if(fristRun == TRUE && countFrirstRun == 2){      //lan va cham dau tien, bat dau tinh chieu dai tu
+                  if(countPulFG > 0){
+                      countPulDistant = countPulFG;
+                  }else{
+                      countPulDistant = -countPulFG;
+                      countPulFG = 0;             //reset ve vi tri ban dau
+                      prepul = 0;
+                  }
+                  fristRun = FALSE;
+              }
+              countTime = 0;
+              sau_1_s = 0;
+              statusStop = TRUE;
+              if(Forward == TRUE){ //doi chieu dong co
+                  GPIO_WriteHigh(GPIOC, GPIO_PIN_4);
+              }else{
+                  GPIO_WriteLow(GPIOC, GPIO_PIN_4);
+              }
+          }
+      }
+      if(countTime == 7000){      //1000
+          countTime = 0;
+          if(sau_1_s < 5){
+              sau_1_s++;              
+          }
+      }
+      if(statusStop == TRUE && sau_1_s == 2){
+          sau_1_s = 0;
+          countTime = 0;
+          GPIO_WriteHigh(GPIOC, GPIO_PIN_5);
+          if(Forward == TRUE){
+              countPulFG = countPulDistant;
+          }else{
+              countPulFG = 0;
+          }
+          TIM2_Cmd(DISABLE);  
+          daytay = TRUE;  
+          // if(fristRun == TRUE && countFrirstRun == 2){    //chua hieu tai sao lai bij xuong day
+          //     fristRun = FALSE;
+          // }      
+      }
+      TIM2_ClearITPendingBit(TIM2_IT_UPDATE);
+    }
  }
 
 /**
